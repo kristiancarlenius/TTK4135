@@ -1,7 +1,7 @@
 % Initialization for the helicopter assignment in TTK4135.
 % Run this file before you execute QuaRC -> Build.
 
-% Updated spring 2018, Andreas L. Flåten
+% Updated spring 2018, Andreas L. FlÃ¥ten
 % Updated Spring 2019, Joakim R. Andersen
 
 clear all;
@@ -15,7 +15,7 @@ elevation_gain = 1; %
 
 % TTK4135 - Helicopter lab
 % Hints/template for problem 2.
-% Updated spring 2018, Andreas L. Flåten
+% Updated spring 2018, Andreas L. FlÃ¥ten
 %% Physical constants
 m_h = 0.4; % Total mass of the motors.
 m_g = 0.03; % Effective mass of the helicopter.
@@ -204,3 +204,45 @@ if plot_elev_response
     legend('norm error', 'norm input')
     title('Elevation closed loop response')
 end
+
+%% Compute LQR Feedback Gain
+Q_lqr = diag([1, 1, 10, 1]); % Adjust weights as needed
+R_lqr = 1; % Penalize input effort
+K_lqr = dlqr(A1, B1, Q_lqr, R_lqr); % Compute LQR gain
+
+%% Implement Feedback Control
+U_feedback = zeros(M, 1);
+X_feedback = zeros(mx, N+1);
+X_feedback(:,1) = x0; % Set initial state
+
+%the u has zero padding be ware
+for k = 1:N
+    % Compute feedback control
+    U_feedback(k) = u(k) - K_lqr * (X_feedback(:,k) - [x1(k); x2(k); x3(k); x4(k)]);
+    
+    % Apply control to system dynamics
+    X_feedback(:,k+1) = A1 * X_feedback(:,k) + B1 * U_feedback(k);
+end
+
+%% Compare Open-Loop (MPC) vs. Closed-Loop (MPC + LQR)
+figure(3)
+subplot(511)
+stairs(t, U_feedback, 'b'), grid
+ylabel('u with LQR')
+
+subplot(512)
+plot(t, x1, 'r', t, X_feedback(1, :), 'b--'), grid
+ylabel('lambda')
+legend('Open-loop', 'Closed-loop')
+
+subplot(513)
+plot(t, x2, 'r', t, X_feedback(2, :), 'b--'), grid
+ylabel('r')
+
+subplot(514)
+plot(t, x3, 'r', t, X_feedback(3, :), 'b--'), grid
+ylabel('p')
+
+subplot(515)
+plot(t, x4, 'r', t, X_feedback(4, :), 'b--'), grid
+xlabel('Time (s)'), ylabel('pdot')
